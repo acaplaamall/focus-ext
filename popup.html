@@ -3,19 +3,31 @@
 <link rel="stylesheet" href="popup.css">
 
 <body>
-
+    <div class="headerbar"></div>
     <div class="wrapper">
+        <div id="focus">
+            You last focused for
+        </div>
+        <img id="image" src="images/8.png" class="tree">
+
         <div id="timer" class="timer">
             0:00:00
         </div>
-        <div id="tabname"></div>
 
         <button id="start-button" class="button">
-            Start session
+            Start new session
         </button>
         <button id="stop-button" class="hidden button">
             End session
         </button>
+        <div class="pointCount">
+            <span>
+                Your current points:
+            </span>
+            <span id="points">
+                0
+            </span>
+        </div>
     </div>
     <script src="popup.js"></script>
 
