@@ -1,27 +1,63 @@
 var interval;
-if (window.localStorage.getItem("ending-state") != null) {
-    document.getElementById("timer").textContent = window.localStorage.getItem("ending-state")
-}
 
-document.getElementById("start-button").addEventListener("click", () => {
+const readLocalStorage = async (key) => {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get([key], function (result) {
+            if (result[key] === undefined) {
+                reject();
+            } else {
+                resolve(result[key]);
+            }
+        });
+    });
+};
+
+
+async function main () {
+    let is_running = await readLocalStorage("is-running");
+    console.log(is_running);
+    if (is_running == 'true') {
+        adjustTime(Date.now())
+        interval = setInterval(countUp, 1000)
+        document.getElementById("start-button").classList.add("hidden")
+        document.getElementById("stop-button").classList.remove("hidden")
+    } else if (is_running == 'false') {
+        let end_time = await readLocalStorage("end-time");
+        adjustTime(end_time)
+    }
+}
+document.getElementById("start-button").addEventListener("click", async () => {
     document.getElementById("start-button").classList.add("hidden")
     document.getElementById("stop-button").classList.remove("hidden")
-    window.localStorage.setItem("start-time", Date.now());
     document.getElementById("timer").textContent = "0:00:00"
     clearInterval(interval);
+    await chrome.storage.local.set({ "start-time": Date.now() })
+    await chrome.storage.local.set({ "is-running": "true" })
     interval = setInterval(countUp, 1000)
 });
 
-document.getElementById("stop-button").addEventListener("click", () => {
+document.getElementById("stop-button").addEventListener("click", endTimer);
+
+async function endTimer () {
     document.getElementById("start-button").classList.remove("hidden")
     document.getElementById("stop-button").classList.add("hidden")
+    await chrome.storage.local.set({ "is-running": "false" })
     clearInterval(interval);
-    adjustTime()
-    window.localStorage.setItem("ending-state", document.getElementById("timer").textContent);
-});
+    adjustTime(Date.now())
+    await chrome.storage.local.set({ "end-time": Date.now() })
+}
 
-function adjustTime () {
-    var time = Date.now() - window.localStorage.getItem("start-time")
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        if (request.msg === "streak-broken") {
+            endTimer();
+        }
+    }
+);
+
+async function adjustTime (date) {
+    var start_time = await readLocalStorage("start-time")
+    var time = date - start_time
     var msec = time;
     var hh = Math.floor(msec / 1000 / 60 / 60);
     msec -= hh * 1000 * 60 * 60;
@@ -42,18 +78,31 @@ function adjustTime () {
 function countUp () {
     var text = document.getElementById("timer").textContent;
     var arr = text.split(":")
-    var str = (parseInt(arr[2]) + 1).toString();
-    if (str.length <= 1) {
-        str = '0' + str;
+    var hh = parseInt(arr[0])
+    var mm = parseInt(arr[1])
+    var ss = (parseInt(arr[2]) + 1)
+    if (ss == 60) {
+        ss = 0;
+        mm += 1;
     }
-    document.getElementById("timer").textContent = arr[0] + ":" + arr[1] + ":" + str
+    if (mm == 60) {
+        mm = 0;
+        hh += 1;
+    }
+    hh = hh.toString();
+    mm = mm.toString();
+    ss = ss.toString();
+
+    if (ss.length <= 1) {
+        ss = '0' + ss;
+    }
+    if (mm.length <= 1) {
+        mm = '0' + mm;
+    }
+
+    document.getElementById("timer").textContent = hh + ":" + mm + ":" + ss
 }
 
-
-
-chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-    var activeTab = tabs[0];
-    document.getElementById("tabname").textContent = activeTab.url;
-});
+window.onload = main();
 
 
